@@ -25,11 +25,13 @@ chmod +x start-mac.sh
 ./start-mac.sh
 ```
 
-Você será solicitado a fornecer:
+Você será solicitado a criar:
 
 - Senha do PostgreSQL
 - E-mail do pgAdmin
 - Senha do Redis (usado pelo n8n)
+
+⚠️ Fique atento à mensagem ao fim do script, lá terão mais informações necessárias.
 
 ## Serviços disponíveis
 
@@ -43,11 +45,6 @@ Você será solicitado a fornecer:
 - Porta: `6380`
 - Usuário: `default`
 - Senha: conforme digitada no setup
-
-## Segurança
-
-- NUNCA envie seu `.env` real para o repositório.
-- A chave da Evolution API está visível apenas nos scripts locais.
 
 ## Organização
 
