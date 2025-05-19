@@ -1,0 +1,310 @@
+{
+  "name": "whatsapp-bot-workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "{{WEBHOOK_PATH}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "75ce66d6-ea0d-4c97-b2a5-5bd9631fc5c2",
+      "name": "Webhook",
+      "webhookId": "{{WEBHOOK_ID}}"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0862ec10-222b-4c35-9cb0-6ef073f4f533",
+              "name": "Numero",
+              "value": "={{ $('Webhook').item.json.body.data.key.remoteJid }}",
+              "type": "string"
+            },
+            {
+              "id": "bc5f195d-cbfc-4d24-bf01-ed130f80ea37",
+              "name": "Instancia",
+              "value": "={{ $('Webhook').item.json.body.instance }}",
+              "type": "string"
+            },
+            {
+              "id": "7ab38468-7f28-4329-a0b4-0f3d7fc2285b",
+              "name": "Mensagem",
+              "value": "={{ $('Webhook').item.json.body.data.message.conversation }}",
+              "type": "string"
+            },
+            {
+              "id": "3db5cb43-00b2-4962-a08f-a294053ee555",
+              "name": "ID Mensagem",
+              "value": "={{ $('Webhook').item.json.body.data.key.id }}",
+              "type": "string"
+            },
+            {
+              "id": "de5e5962-388f-4e4c-b0a7-850e9f33f0f5",
+              "name": "Nome",
+              "value": "={{ $('Webhook').item.json.body.data.pushName }}",
+              "type": "string"
+            },
+            {
+              "id": "ae8b5a75-8d7d-4543-8be0-1f23d131906b",
+              "name": "",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "id": "da8f90f4-b87c-4e20-8713-9a1b52316805",
+      "name": "Dados",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Dados').item.json.Mensagem }}",
+        "options": {
+          "systemMessage": "=Nome da pessoa: {{ $('Dados').item.json.Nome }} \nCumprimente a pessoa da seguinte forma: \"Olá, estou aqui para tirar suas dúvidas sobre a Bíblia.\"\nResponda às dúvidas usando como fonte somente o site jw.org.\nSeja caloroso, amoroso e sucinto.\nAvise qual a fonte da sua informação sempre."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        480,
+        0
+      ],
+      "id": "4d32c3bf-7dc2-4006-8e0b-b6ff91a0b93d",
+      "name": "AI Agent",
+      "executeOnce": false,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        380,
+        280
+      ],
+      "id": "3cd44dac-bcf3-4d3e-80d1-cd77fe3fdbe0",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "{{OPENAIAPI_CREDENTIAL}}",
+          "name": "{{OPENAIAPI_CREDENTIAL}}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Dados').item.json.Numero }}",
+        "sessionTTL": 7200,
+        "contextWindowLength": 20
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        560,
+        220
+      ],
+      "id": "451605f6-48cb-4e8e-9811-913d42c0ec9a",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "{{REDIS_CREDENTIAL}}",
+          "name": "{{REDIS_CREDENTIAL}}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toolDescription": "Retorna dados do site jw.org",
+        "url": "https://www.jw.org",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequestTool",
+      "typeVersion": 4.2,
+      "position": [
+        760,
+        240
+      ],
+      "id": "146cc9bd-ebeb-4d02-83f7-2a422eea92ab",
+      "name": "HTTP Request",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.0-flash",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        0,
+        360
+      ],
+      "id": "19896d13-a4b6-4e69-a6ce-07bd906d54e3",
+      "name": "Google Gemini Chat Model",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "resource": "messages-api",
+        "instanceName": "={{ $('Dados').item.json.Instancia }}",
+        "remoteJid": "={{ $('Dados').item.json.Numero }}",
+        "messageText": "={{ $('AI Agent').item.json.output }}",
+        "options_message": {
+          "delay": 3000
+        }
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        0
+      ],
+      "id": "4dcb24c2-95d9-44ed-bf08-e9ab6679b10e",
+      "name": "Evolution API1",
+      "credentials": {
+        "evolutionApi": {
+          "id": "{{EVOLUTIONAPI_CREDENTIAL}}",
+          "name": "{{EVOLUTIONAPI_CREDENTIAL}}"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "chat-api",
+        "operation": "read-messages",
+        "instanceName": "={{ $('Dados').item.json.Instancia }}",
+        "remoteJid": "={{ $('Dados').item.json.Numero }}",
+        "messageId": "={{ $('Dados').item.json['ID Mensagem'] }}"
+      },
+      "type": "n8n-nodes-evolution-api.evolutionApi",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ],
+      "id": "c6de5ba6-86a1-420d-a9b0-c1efd83095e3",
+      "name": "Evolution API",
+      "credentials": {
+        "evolutionApi": {
+          "id": "{{EVOLUTIONAPI_CREDENTIAL}}",
+          "name": "{{EVOLUTIONAPI_CREDENTIAL}}"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dados": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Evolution API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evolution API": {
+      "main": [
+        [
+          {
+            "node": "Evolution API1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "{{VERSION_ID}}",
+  "meta": {
+    "instanceId": "{{INSTANCE_ID}}"
+  },
+  "id": "Hv25HQmOG27PnyZk",
+  "tags": []
+}
