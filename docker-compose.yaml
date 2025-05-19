@@ -1,0 +1,237 @@
+version: "3.8"
+
+services:
+  # Serviço Redis para Evolution API
+  redis:
+    image: redis:latest
+    container_name: redis_service
+    command: ["redis-server", "--appendonly", "yes", "--port", "6379"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - rede_geral
+    deploy:
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1024M
+    restart: always
+
+  # Serviço PostgreSQL
+  postgres:
+    image: postgres:latest
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - rede_geral
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: "0.5"
+
+  # Serviço pgAdmin
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: 12345
+    ports:
+      - "5433:80"
+    networks:
+      - rede_geral
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: "0.5"
+
+  # Serviço Evolution API
+  evolution_v2:
+    image: atendai/evolution-api:latest
+    container_name: evolution_v2
+    volumes:
+      - evolution_instancesv2:/evolution/instances
+    networks:
+      - rede_geral
+    ports:
+      - "8080:8080"
+    restart: always
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_TYPE=apikey
+      - AUTHENTICATION_API_KEY=KFZOm3Hc3GSNWwHBywEm67xYgjN8xGTH
+      - AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES=true
+      - LANGUAGE=pt-BR
+      - CONFIG_SESSION_PHONE_CLIENT=InovaBoost
+      - CONFIG_SESSION_PHONE_NAME=chrome
+      - CONFIG_SESSION_PHONE_VERSION=2.3000.1015901307
+      - WA_BUSINESS_TOKEN_WEBHOOK=evolution
+      - WA_BUSINESS_URL=https://graph.facebook.com
+      - WA_BUSINESS_VERSION=v20.0
+      - WA_BUSINESS_LANGUAGE=pt_BR
+      - QRCODE_LIMIT=1902
+      - QRCODE_COLOR=#000000
+      - DATABASE_ENABLED=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://postgres:${POSTGRES_PASSWORD}@postgres_db:5432/evolution
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=true
+      - DATABASE_SAVE_MESSAGE_UPDATE=true
+      - DATABASE_SAVE_DATA_CONTACTS=true
+      - DATABASE_SAVE_DATA_CHATS=true
+      - OPENAI_ENABLED=false
+      - DIFY_ENABLED=false
+      - S3_ENABLED=false
+      - S3_ACCESS_KEY=
+      - S3_SECRET_KEY=
+      - S3_BUCKET=evolution
+      - S3_PORT=443
+      - S3_ENDPOINT=
+      - S3_USE_SSL=true
+      - CACHE_REDIS_ENABLED=true
+      - CACHE_REDIS_URI=redis://redis_service:6379/2
+      - CACHE_REDIS_PREFIX_KEY=evolution
+      - CACHE_REDIS_SAVE_INSTANCES=false
+      - CACHE_LOCAL_ENABLED=false
+      - DEL_INSTANCE=2
+      - DEL_TEMP_INSTANCES=false
+      - TYPEBOT_ENABLED=true
+      - TYPEBOT_API_VERSION=latest
+      - CHATWOOT_ENABLED=false
+      - CHATWOOT_MESSAGE_READ=true
+      - CHATWOOT_MESSAGE_DELETE=true
+      - CHATWOOT_IMPORT_DATABASE_CONNECTION_URI=postgresql://postgres:${POSTGRES_PASSWORD}@postgres_db:5432/chatwoot?sslmode=disable
+      - CHATWOOT_IMPORT_PLACEHOLDER_MEDIA_MESSAGE=false
+      - RABBITMQ_ENABLED=false
+      - RABBITMQ_URI=amqp://admin:admin@rabbitmq:5672/default
+      - RABBITMQ_EXCHANGE_NAME=evolution
+      - RABBITMQ_GLOBAL_ENABLED=false
+      - RABBITMQ_EVENTS_APPLICATION_STARTUP=false
+      - RABBITMQ_EVENTS_INSTANCE_CREATE=false
+      - RABBITMQ_EVENTS_INSTANCE_DELETE=false
+      - RABBITMQ_EVENTS_QRCODE_UPDATED=false
+      - RABBITMQ_EVENTS_MESSAGES_SET=false
+      - RABBITMQ_EVENTS_MESSAGES_UPSERT=true
+      - RABBITMQ_EVENTS_MESSAGES_EDITED=false
+      - RABBITMQ_EVENTS_MESSAGES_UPDATE=false
+      - RABBITMQ_EVENTS_MESSAGES_DELETE=false
+      - RABBITMQ_EVENTS_SEND_MESSAGE=false
+      - RABBITMQ_EVENTS_CONTACTS_SET=false
+      - RABBITMQ_EVENTS_CONTACTS_UPSERT=false
+      - RABBITMQ_EVENTS_CONTACTS_UPDATE=false
+      - RABBITMQ_EVENTS_PRESENCE_UPDATE=false
+      - RABBITMQ_EVENTS_CHATS_SET=false
+      - RABBITMQ_EVENTS_CHATS_UPSERT=false
+      - RABBITMQ_EVENTS_CHATS_UPDATE=false
+      - RABBITMQ_EVENTS_CHATS_DELETE=false
+      - RABBITMQ_EVENTS_GROUPS_UPSERT=false
+      - RABBITMQ_EVENTS_GROUP_UPDATE=false
+      - RABBITMQ_EVENTS_GROUP_PARTICIPANTS_UPDATE=false
+      - RABBITMQ_EVENTS_CONNECTION_UPDATE=true
+      - RABBITMQ_EVENTS_CALL=false
+      - RABBITMQ_EVENTS_TYPEBOT_START=false
+      - RABBITMQ_EVENTS_TYPEBOT_CHANGE_STATUS=false
+      - WEBHOOK_GLOBAL_ENABLED=false
+      - WEBHOOK_GLOBAL_URL=
+      - WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS=false
+      - WEBHOOK_EVENTS_APPLICATION_STARTUP=false
+      - WEBHOOK_EVENTS_QRCODE_UPDATED=true
+      - WEBHOOK_EVENTS_MESSAGES_SET=true
+      - WEBHOOK_EVENTS_MESSAGES_UPSERT=true
+      - WEBHOOK_EVENTS_MESSAGES_EDITED=true
+      - WEBHOOK_EVENTS_MESSAGES_UPDATE=true
+      - WEBHOOK_EVENTS_MESSAGES_DELETE=true
+      - WEBHOOK_EVENTS_SEND_MESSAGE=true
+      - WEBHOOK_EVENTS_CONTACTS_SET=true
+      - WEBHOOK_EVENTS_CONTACTS_UPSERT=true
+      - WEBHOOK_EVENTS_CONTACTS_UPDATE=true
+      - WEBHOOK_EVENTS_PRESENCE_UPDATE=true
+      - WEBHOOK_EVENTS_CHATS_SET=true
+      - WEBHOOK_EVENTS_CHATS_UPSERT=true
+      - WEBHOOK_EVENTS_CHATS_UPDATE=true
+      - WEBHOOK_EVENTS_CHATS_DELETE=true
+      - WEBHOOK_EVENTS_GROUPS_UPSERT=true
+      - WEBHOOK_EVENTS_GROUPS_UPDATE=true
+      - WEBHOOK_EVENTS_GROUP_PARTICIPANTS_UPDATE=true
+      - WEBHOOK_EVENTS_CONNECTION_UPDATE=true
+      - WEBHOOK_EVENTS_LABELS_EDIT=true
+      - WEBHOOK_EVENTS_LABELS_ASSOCIATION=true
+      - WEBHOOK_EVENTS_CALL=true
+      - WEBHOOK_EVENTS_TYPEBOT_START=false
+      - WEBHOOK_EVENTS_TYPEBOT_CHANGE_STATUS=false
+      - WEBHOOK_EVENTS_ERRORS=false
+      - WEBHOOK_EVENTS_ERRORS_WEBHOOK=
+
+  # Serviço n8n.io
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: n8n
+    environment:
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - WEBHOOK_URL=http://host.docker.internal:5678
+      - N8N_REDIS_HOST=host.docker.internal
+      - N8N_REDIS_PORT=6380
+      - N8N_REDIS_PASSWORD=${N8N_REDIS_PASSWORD}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    ports:
+      - "5678:5678"
+    networks:
+      - rede_geral
+    restart: always
+
+  # Serviço Redis para n8n
+  redis_n8n:
+    image: redis:latest
+    container_name: redis_n8n
+    command:
+      [
+        "redis-server",
+        "--requirepass",
+        "${N8N_REDIS_PASSWORD}",
+        "--appendonly",
+        "yes",
+        "--port",
+        "6379",
+      ]
+    ports:
+      - "6380:6379"
+    networks:
+      - rede_geral
+    restart: always
+
+volumes:
+  redis_data:
+    external: false
+    name: redis_data
+  postgres_data:
+    external: false
+    name: postgres_data
+  evolution_instancesv2:
+    external: false
+    name: evolution_instancesv2
+  n8n_data:
+    external: false
+    name: n8n_data
+
+networks:
+  rede_geral:
+    external: true
+    name: rede_geral
